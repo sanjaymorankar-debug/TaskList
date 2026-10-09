@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TaskList</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✅</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+<!-- The bkesari.com top menu, served by the hub. It marks the TaskList tab active itself. -->
+<script src="/shared/menu.js" defer></script>
+<script src="rules.js" defer></script>
+<script src="app.js" defer></script>
+</head>
+<body>
+<div data-bkesari-menu></div>
+
+<header class="page-head">
+  <div class="wrap head-row">
+    <div>
+      <h1>TaskList</h1>
+      <p class="sub" id="todayLine">Loading…</p>
+    </div>
+    <button type="button" class="btn btn-primary" id="addBtn">+ Add task</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="stats" id="stats" aria-label="Summary"></section>
+
+  <section class="filters" aria-label="Search and filters">
+    <input type="search" id="fQ" placeholder="Search name, owner, next action, comment or #Sr No." aria-label="Search">
+    <select id="fStatus" aria-label="Status"><option value="">All statuses</option></select>
+    <select id="fOwner" aria-label="Owner"><option value="">All owners</option></select>
+    <select id="fNextOwner" aria-label="Owner of next action"><option value="">All next-action owners</option></select>
+    <select id="fDelayed" aria-label="Delay">
+      <option value="">Delayed or not</option>
+      <option value="1">Delayed only</option>
+      <option value="reason-missing">Delayed, reason missing</option>
+    </select>
+    <span class="sort-group">
+      <select id="fSort" aria-label="Sort by">
+        <option value="sr_no">Sort: Sr No.</option>
+        <option value="planned_start">Sort: Planned start</option>
+        <option value="planned_end">Sort: Planned end</option>
+        <option value="actual_start">Sort: Actual start</option>
+        <option value="actual_end">Sort: Actual end</option>
+      </select>
+      <button type="button" class="btn btn-ghost" id="fDir" aria-label="Sort direction">↑ Asc</button>
+    </span>
+    <button type="button" class="btn btn-ghost" id="fClear">Clear</button>
+  </section>
+
+  <p class="count" id="countLine" aria-live="polite"></p>
+
+  <div class="table-card">
+    <table class="list" id="list">
+      <thead>
+        <tr>
+          <th data-sort="sr_no" class="sortable">Sr No.</th>
+          <th>Task Name</th>
+          <th data-sort="planned_start" class="sortable">Planned start</th>
+          <th data-sort="planned_end" class="sortable">Planned end</th>
+          <th data-sort="actual_start" class="sortable">Actual start</th>
+          <th data-sort="actual_end" class="sortable">Actual end</th>
+          <th>Status</th>
+          <th>Owner</th>
+          <th>Next action</th>
+          <th>Owner of next action</th>
+          <th>Dependency</th>
+          <th>Delay</th>
+          <th>Latest comment</th>
+        </tr>
+      </thead>
+      <tbody id="rows"><tr><td colspan="13" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Task screen: add or edit one task -->
+<dialog id="taskDlg" class="dlg dlg-wide" aria-labelledby="taskTitle">
+  <div class="dlg-head">
+    <h2 id="taskTitle">Task</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Close">✕</button>
+  </div>
+  <div class="dlg-body task-grid">
+    <form id="taskForm" class="panel" novalidate>
+      <div class="form-grid">
+        <label class="fl full">Task name <span class="req">*</span>
+          <input name="name" required maxlength="250" autocomplete="off"></label>
+
+        <label class="fl">Status
+          <select name="status" id="statusSel"></select></label>
+        <label class="fl">Project <span class="opt">(optional)</span>
+          <input name="project" list="projectList" maxlength="250" autocomplete="off"></label>
+
+        <label class="fl">Owner
+          <input name="owner" list="peopleList" maxlength="250" autocomplete="off"></label>
+        <span class="fl srno-note" id="srNote"></span>
+
+        <label class="fl">Planned start
+          <input type="date" name="planned_start"></label>
+        <label class="fl">Planned end
+          <input type="date" name="planned_end"></label>
+        <label class="fl">Actual start
+          <input type="date" name="actual_start"></label>
+        <label class="fl">Actual end
+          <input type="date" name="actual_end"></label>
+
+        <div class="full delay-box" id="delayBox" hidden>
+          <p class="delay-line" id="delayLine"></p>
+          <label class="fl">Reason for delay
+            <textarea name="delay_reason" rows="2" maxlength="5000"></textarea></label>
+        </div>
+
+        <label class="fl full">Next action
+          <textarea name="next_action" rows="2" maxlength="5000"></textarea></label>
+        <label class="fl">Owner of next action
+          <input name="next_action_owner" list="peopleList" maxlength="250" autocomplete="off"></label>
+        <span></span>
+
+        <div class="full">
+          <span class="fl">Depends on <span class="opt">(must be completed first)</span></span>
+          <div class="chips" id="depChips"></div>
+          <select id="depAdd" aria-label="Add a dependency"><option value="">+ Add a task this one waits for…</option></select>
+        </div>
+
+        <label class="fl full">Description <span class="opt">(optional)</span>
+          <textarea name="description" rows="2" maxlength="5000"></textarea></label>
+
+        <label class="fl full" id="firstCommentWrap">First comment <span class="opt">(optional)</span>
+          <textarea name="comment" rows="2" maxlength="5000"></textarea></label>
+      </div>
+      <p class="msg" id="formMsg" role="alert"></p>
+      <div class="form-actions">
+        <button type="button" class="btn btn-danger" id="deleteBtn">Delete</button>
+        <span class="right">
+          <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveBtn">Save</button>
+        </span>
+      </div>
+    </form>
+
+    <aside class="side" id="sidePanel">
+      <section class="panel">
+        <h3>Waiting for</h3>
+        <ul class="ref-list" id="waitsFor"></ul>
+        <h3>Tasks waiting for this one</h3>
+        <ul class="ref-list" id="waitedOnBy"></ul>
+      </section>
+      <section class="panel">
+        <div class="side-head">
+          <h3>Comments</h3>
+          <button type="button" class="btn btn-ghost btn-sm" id="historyBtn">Show history</button>
+        </div>
+        <form id="commentForm" class="comment-form">
+          <textarea name="body" rows="2" maxlength="5000" placeholder="Add a comment…" aria-label="New comment" required></textarea>
+          <div class="row">
+            <span class="hint">Saved with the current date and time (IST). Comments cannot be edited later.</span>
+            <button type="submit" class="btn btn-primary btn-sm">Add comment</button>
+          </div>
+        </form>
+        <p class="msg" id="commentMsg" role="alert"></p>
+        <ol class="comments" id="comments" aria-label="Comments, latest first"></ol>
+      </section>
+    </aside>
+  </div>
+</dialog>
+
+<!-- Full comment history, oldest first -->
+<dialog id="historyDlg" class="dlg" aria-labelledby="historyTitle">
+  <div class="dlg-head">
+    <h2 id="historyTitle">Comment history</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Close">✕</button>
+  </div>
+  <div class="dlg-body">
+    <p class="sub" id="historySub"></p>
+    <ol class="history" id="historyList"></ol>
+  </div>
+</dialog>
+
+<!-- Confirmation -->
+<dialog id="confirmDlg" class="dlg dlg-narrow" aria-labelledby="confirmTitle">
+  <div class="dlg-head"><h2 id="confirmTitle">Are you sure?</h2></div>
+  <div class="dlg-body">
+    <p id="confirmText"></p>
+    <div class="form-actions">
+      <span></span>
+      <span class="right">
+        <button type="button" class="btn btn-ghost" id="confirmNo">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmYes">Continue</button>
+      </span>
+    </div>
+  </div>
+</dialog>
+
+<datalist id="peopleList"></datalist>
+<datalist id="projectList"></datalist>
+</body>
+</html>
